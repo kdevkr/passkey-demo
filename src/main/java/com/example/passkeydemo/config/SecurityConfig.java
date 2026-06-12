@@ -22,7 +22,7 @@ public class SecurityConfig {
             .webAuthn(webauthn -> webauthn
                 .rpId("localhost")
                 .rpName("Passkey Demo")
-                .allowedOrigins("https://localhost:5173")
+                .allowedOrigins("https://localhost:8080")
             )
             .formLogin(withDefaults()); // Optional: keep form login active for fallback
 

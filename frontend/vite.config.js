@@ -6,9 +6,20 @@ import mkcert from 'vite-plugin-mkcert'
 export default defineConfig({
   plugins: [vue(), mkcert()],
   server: {
+    port: 8080,
     host: true, // Listen on all local IPs including Tailscale IP
     proxy: {
       '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/webauthn': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/login': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
