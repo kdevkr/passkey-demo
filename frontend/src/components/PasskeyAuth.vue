@@ -15,7 +15,7 @@
       <div class="card-body">
         <!-- 등록 섹션 -->
         <div class="section register-section">
-          <h2>패스키 등록 (회원가입)</h2>
+          <h2>패스키 등록</h2>
           <div class="input-group">
             <input 
               v-model="username" 
@@ -31,7 +31,7 @@
             @click="handleRegister"
           >
             <span v-if="loading && action === 'register'" class="spinner"></span>
-            <span>패스키 등록</span>
+            <span>등록하기</span>
           </button>
         </div>
 
@@ -52,19 +52,7 @@
         </div>
       </div>
 
-      <!-- 모킹 토글 스위치 -->
-      <div class="mock-toggle-container">
-        <label class="switch">
-          <input type="checkbox" v-model="mockMode" />
-          <span class="slider round"></span>
-        </label>
-        <span class="mock-label">
-          백엔드 모킹 모드 
-          <span class="mock-badge" :class="{ 'badge-active': mockMode }">
-            {{ mockMode ? 'MOCK ON' : 'OFF' }}
-          </span>
-        </span>
-      </div>
+
 
       <!-- 상태 메시지 배너 -->
       <transition name="fade">
@@ -96,56 +84,11 @@ const loading = ref(false)
 const action = ref('') // 'register' | 'login'
 const statusMessage = ref('')
 const statusType = ref('info') // 'info' | 'success' | 'error'
-const mockMode = ref(true) // 기본적으로 모킹 모드를 활성화해두어 단독 테스트가 쉽게 구성
 
 const setStatus = (msg, type = 'info') => {
   statusMessage.value = msg
   statusType.value = type
 }
-
-// Mocking options and helpers
-const getMockRegisterOptions = (name) => {
-  return {
-    challenge: 'MTIzNDU2Nzg5MDEyMzQ1Ng', // Base64URL challenge
-    rp: {
-      name: 'Passkey Demo (Mock)',
-      id: window.location.hostname
-    },
-    user: {
-      id: 'dXNlci1pZC0xMjM0NTY', // Base64URL user ID
-      name: name,
-      displayName: name
-    },
-    pubKeyCredParams: [
-      { alg: -7, type: 'public-key' },  // ES256
-      { alg: -257, type: 'public-key' } // RS256
-    ],
-    timeout: 60000,
-    attestation: 'none',
-    excludeCredentials: [],
-    authenticatorSelection: {
-      residentKey: 'preferred',
-      requireResidentKey: false,
-      userVerification: 'preferred'
-    }
-  }
-}
-
-const getMockLoginOptions = () => {
-  const creds = JSON.parse(localStorage.getItem('mock_credentials') || '[]')
-  const allowCredentials = creds.map(c => ({
-    id: c.credentialId,
-    type: 'public-key'
-  }))
-
-  return {
-    challenge: 'MTIzNDU2Nzg5MDEyMzQ1Ng',
-    rpId: window.location.hostname,
-    allowCredentials: allowCredentials,
-    userVerification: 'preferred'
-  }
-}
-
 const handleRegister = async () => {
   if (!username.value.trim()) return
   loading.value = true
@@ -154,63 +97,72 @@ const handleRegister = async () => {
 
   try {
     let options
-    if (mockMode.value) {
-      // Mock Options
-      options = getMockRegisterOptions(username.value.trim())
-    } else {
-      // Real API Options
-      const optionsRes = await fetch('/webauthn/register/options', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username: username.value.trim() })
-      })
-      if (!optionsRes.ok) {
-        throw new Error('등록 옵션을 가져오는 데 실패했습니다.')
-      }
-      options = await optionsRes.json()
+    // Real API Options
+    const optionsRes = await fetch('/api/register/options', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username: username.value.trim() })
+    })
+    if (!optionsRes.ok) {
+      throw new Error('등록 옵션을 가져오는 데 실패했습니다.')
+    }
+    options = await optionsRes.json()
+
+    // Ensure all options fields are properly formatted for @simplewebauthn/browser
+    const formattedOptions = {
+      ...options,
+      challenge: typeof options.challenge === 'object' && options.challenge.bytes ? options.challenge.bytes : options.challenge,
+      user: options.user ? {
+        ...options.user,
+        id: typeof options.user.id === 'object' && options.user.id.bytes ? options.user.id.bytes : options.user.id
+      } : undefined,
+      pubKeyCredParams: options.pubKeyCredParams ? options.pubKeyCredParams.map(param => ({
+        type: typeof param.type === 'object' && param.type.value ? param.type.value : param.type,
+        alg: typeof param.alg === 'object' && param.alg.value !== undefined ? param.alg.value : param.alg
+      })) : undefined,
+      attestation: typeof options.attestation === 'object' && options.attestation.value ? options.attestation.value : options.attestation,
+      authenticatorSelection: options.authenticatorSelection ? {
+        ...options.authenticatorSelection,
+        residentKey: typeof options.authenticatorSelection.residentKey === 'object' && options.authenticatorSelection.residentKey.value ? options.authenticatorSelection.residentKey.value : options.authenticatorSelection.residentKey,
+        userVerification: typeof options.authenticatorSelection.userVerification === 'object' && options.authenticatorSelection.userVerification.value ? options.authenticatorSelection.userVerification.value : options.authenticatorSelection.userVerification
+      } : undefined,
+      timeout: typeof options.timeout === 'string' ? 300000 : options.timeout // Convert Java Duration string (e.g. PT5M) to milliseconds (5m = 300000ms)
     }
 
     // Start browser WebAuthn registration
     setStatus('기기 인증을 진행 중입니다...', 'info')
-    const credential = await startRegistration({ optionsJSON: options })
+    const credential = await startRegistration({ optionsJSON: formattedOptions })
 
     setStatus('등록 완료를 검증하는 중입니다...', 'info')
     
-    if (mockMode.value) {
-      // Mock verification and save credential in LocalStorage
-      const creds = JSON.parse(localStorage.getItem('mock_credentials') || '[]')
-      creds.push({
+    // Real API verification
+    const finishRes = await fetch('/api/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         username: username.value.trim(),
-        credentialId: credential.id,
-        rawId: credential.rawId
+        credential: credential
       })
-      localStorage.setItem('mock_credentials', JSON.stringify(creds))
+    })
 
-      setStatus(`패스키 등록이 완료되었습니다! (MOCK - 계정: ${username.value.trim()})`, 'success')
+    if (finishRes.ok) {
+      setStatus('패스키 등록이 완료되었습니다!', 'success')
       username.value = ''
     } else {
-      // Real API verification
-      const finishRes = await fetch('/webauthn/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(credential)
-      })
-
-      if (finishRes.ok) {
-        setStatus('패스키 등록이 완료되었습니다!', 'success')
-        username.value = ''
-      } else {
-        const errText = await finishRes.text()
-        throw new Error(errText || '패스키 등록 완료 검증에 실패했습니다.')
-      }
+      const errText = await finishRes.text()
+      throw new Error(errText || '패스키 등록 완료 검증에 실패했습니다.')
     }
   } catch (error) {
     console.error(error)
-    setStatus(error.message || '패스키 등록 중 오류가 발생했습니다.', 'error')
+    let userFriendlyMsg = error.message || '패스키 등록 중 오류가 발생했습니다.'
+    if (error.name === 'NotAllowedError') {
+      userFriendlyMsg = '패스키 등록이 취소되었거나 허용되지 않았습니다. 다시 시도해 주세요.'
+    }
+    setStatus(userFriendlyMsg, 'error')
   } finally {
     loading.value = false
     action.value = ''
@@ -224,57 +176,59 @@ const handleLogin = async () => {
 
   try {
     let options
-    if (mockMode.value) {
-      options = getMockLoginOptions()
-    } else {
-      const optionsRes = await fetch('/webauthn/authenticate/options', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      })
-      if (!optionsRes.ok) {
-        throw new Error('로그인 옵션을 가져오는 데 실패했습니다.')
-      }
-      options = await optionsRes.json()
+    const optionsRes = await fetch('/webauthn/authenticate/options', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({})
+    })
+    if (!optionsRes.ok) {
+      throw new Error('로그인 옵션을 가져오는 데 실패했습니다.')
+    }
+    options = await optionsRes.json()
+
+    // Ensure challenge and allowed credentials IDs are base64url strings for @simplewebauthn/browser
+    const formattedOptions = {
+      ...options,
+      challenge: typeof options.challenge === 'object' && options.challenge.bytes ? options.challenge.bytes : options.challenge,
+      allowCredentials: options.allowCredentials ? options.allowCredentials.map(cred => ({
+        ...cred,
+        id: typeof cred.id === 'object' && cred.id.bytes ? cred.id.bytes : cred.id,
+        type: typeof cred.type === 'object' && cred.type.value ? cred.type.value : cred.type
+      })) : undefined,
+      userVerification: typeof options.userVerification === 'object' && options.userVerification.value ? options.userVerification.value : options.userVerification,
+      timeout: typeof options.timeout === 'string' ? 300000 : options.timeout // Convert Java Duration string (e.g. PT5M) to milliseconds (5m = 300000ms)
     }
 
     // Start browser WebAuthn authentication
     setStatus('기기 인증을 진행 중입니다...', 'info')
-    const assertion = await startAuthentication({ optionsJSON: options })
+    const assertion = await startAuthentication({ optionsJSON: formattedOptions })
 
     setStatus('로그인 완료를 검증하는 중입니다...', 'info')
 
-    if (mockMode.value) {
-      // Mock verification
-      const creds = JSON.parse(localStorage.getItem('mock_credentials') || '[]')
-      const match = creds.find(c => c.credentialId === assertion.id)
-      if (!match) {
-        throw new Error('등록되지 않은 패스키 기기입니다. 먼저 등록을 완료해 주세요.')
-      }
+    // Real API verification
+    const finishRes = await fetch('/login/webauthn', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(assertion)
+    })
 
-      setStatus(`성공적으로 로그인되었습니다! (MOCK - 계정: ${match.username})`, 'success')
+    if (finishRes.ok) {
+      setStatus('성공적으로 로그인되었습니다!', 'success')
     } else {
-      // Real API verification
-      const finishRes = await fetch('/login/webauthn', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(assertion)
-      })
-
-      if (finishRes.ok) {
-        setStatus('성공적으로 로그인되었습니다!', 'success')
-      } else {
-        const errText = await finishRes.text()
-        throw new Error(errText || '로그인 검증에 실패했습니다.')
-      }
+      const errText = await finishRes.text()
+      throw new Error(errText || '로그인 검증에 실패했습니다.')
     }
   } catch (error) {
     console.error(error)
-    setStatus(error.message || '로그인 중 오류가 발생했습니다.', 'error')
+    let userFriendlyMsg = error.message || '로그인 중 오류가 발생했습니다.'
+    if (error.name === 'NotAllowedError') {
+      userFriendlyMsg = '패스키 로그인이 취소되었거나 허용되지 않았습니다. 다시 시도해 주세요.'
+    }
+    setStatus(userFriendlyMsg, 'error')
   } finally {
     loading.value = false
     action.value = ''
@@ -467,92 +421,7 @@ h2 {
   margin-left: .5em;
 }
 
-/* Mocking Toggle Styling */
-.mock-toggle-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-}
 
-.mock-label {
-  font-size: 13.5px;
-  color: #9ca3af;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.mock-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: #374151;
-  color: #9ca3af;
-}
-
-.badge-active {
-  background: rgba(6, 182, 212, 0.2);
-  color: #22d3ee;
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 38px;
-  height: 22px;
-  flex-shrink: 0;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  transition: .3s;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  bottom: 3px;
-  background-color: #d1d5db;
-  transition: .3s;
-}
-
-input:checked + .slider {
-  background-color: #06b6d4;
-}
-
-input:checked + .slider:before {
-  transform: translateX(16px);
-  background-color: #ffffff;
-}
-
-.slider.round {
-  border-radius: 22px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
 
 .status-banner {
   display: flex;

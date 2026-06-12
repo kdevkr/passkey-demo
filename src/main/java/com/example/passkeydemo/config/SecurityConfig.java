@@ -5,12 +5,66 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
+import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule;
+import org.springframework.security.web.webauthn.management.*;
+
+import java.util.Collections;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Bean
+    public UserDetailsService userDetailsService(PublicKeyCredentialUserEntityRepository userEntityRepository) {
+        return username -> {
+            PublicKeyCredentialUserEntity userEntity = userEntityRepository.findByUsername(username);
+            if (userEntity == null) {
+                throw new UsernameNotFoundException("User not found: " + username);
+            }
+            return User.withUsername(username)
+                    .password("{noop}")
+                    .roles("USER")
+                    .build();
+        };
+    }
+
+    @Bean
+    public WebauthnJacksonModule webauthnJacksonModule() {
+        return new WebauthnJacksonModule();
+    }
+
+    @Bean
+    public PublicKeyCredentialUserEntityRepository userEntityRepository() {
+        return new MapPublicKeyCredentialUserEntityRepository();
+    }
+
+    @Bean
+    public UserCredentialRepository userCredentialRepository() {
+        return new MapUserCredentialRepository();
+    }
+
+    @Bean
+    public WebAuthnRelyingPartyOperations relyingPartyOperations(
+            PublicKeyCredentialUserEntityRepository userEntityRepository,
+            UserCredentialRepository userCredentialRepository) {
+        PublicKeyCredentialRpEntity rpEntity = PublicKeyCredentialRpEntity.builder()
+                .id("localhost")
+                .name("Passkey Demo")
+                .build();
+        return new Webauthn4JRelyingPartyOperations(
+                userEntityRepository,
+                userCredentialRepository,
+                rpEntity,
+                Collections.singleton("https://localhost:8080")
+        );
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
