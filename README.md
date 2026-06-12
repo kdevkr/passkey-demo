@@ -5,7 +5,7 @@ Spring Boot 4의 Spring Security WebAuthn과 Vue 3를 연동한 패스키 로그
 ## 🛠️ 기술 스택 (Tech Stack)
 
 ### Backend
-- **Java 21**
+- **Java 25**
 - **Spring Boot 4.1.0**
 - **Spring Security 7** (Native WebAuthn)
 - **Gradle** (Kotlin DSL)

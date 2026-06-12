@@ -10,7 +10,7 @@ description = "Passkey Demo Project in Spring Boot 4"
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(25)
 	}
 }
 
