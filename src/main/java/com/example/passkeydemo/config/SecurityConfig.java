@@ -11,7 +11,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
 import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule;
-import org.springframework.security.web.webauthn.management.*;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
+import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
+import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
 import java.util.Collections;
 
@@ -40,15 +43,6 @@ public class SecurityConfig {
         return new WebauthnJacksonModule();
     }
 
-    @Bean
-    public PublicKeyCredentialUserEntityRepository userEntityRepository() {
-        return new MapPublicKeyCredentialUserEntityRepository();
-    }
-
-    @Bean
-    public UserCredentialRepository userCredentialRepository() {
-        return new MapUserCredentialRepository();
-    }
 
     @Bean
     public WebAuthnRelyingPartyOperations relyingPartyOperations(
