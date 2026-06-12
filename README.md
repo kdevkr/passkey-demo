@@ -2,6 +2,20 @@
 
 Spring Boot 4의 Spring Security WebAuthn과 Vue 3를 연동한 패스키 로그인/회원가입 데모입니다.
 
+## 🛠️ 기술 스택 (Tech Stack)
+
+### Backend
+- **Java 21**
+- **Spring Boot 4.1.0**
+- **Spring Security 7** (Native WebAuthn)
+- **Gradle** (Kotlin DSL)
+
+### Frontend
+- **Vue 3**
+- **Vite**
+- **@simplewebauthn/browser**
+- **pnpm**
+
 ## 🚀 실행 방법
 
 ### 1. 백엔드 실행 (localhost:5000)
