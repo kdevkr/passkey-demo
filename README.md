@@ -12,8 +12,8 @@ Spring Boot 4의 Spring Security WebAuthn과 Vue 3를 연동한 패스키 로그
 ### 2. 프론트엔드 실행 (localhost:8080)
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 > 🔐 **HTTPS 설정 (mkcert)**: 패스키 인증(WebAuthn)은 브라우저 보안 제약으로 인해 로컬 개발 환경에서도 HTTPS가 필수입니다.
