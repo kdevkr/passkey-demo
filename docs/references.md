@@ -45,6 +45,17 @@ This document collects and summarizes the official documentation and integration
 
 ---
 
+## 3. Frontend WebAuthn Library
+
+### SimpleWebAuthn
+* **Link**: [SimpleWebAuthn Documentation](https://simplewebauthn.dev/)
+* **Key Concept**:
+  - The standard library for WebAuthn in JavaScript.
+  - `@simplewebauthn/browser` provides wrapper functions `startRegistration()` and `startAuthentication()` which handle all base64url encoding/decoding, browser compatibility checks, and calling the native `navigator.credentials` APIs.
+  - Using this avoids manually parsing binary buffers to and from the server.
+
+---
+
 ## 3. Frontend Integration Flow
 
 When the frontend communicates with the backend, the flow looks like:
