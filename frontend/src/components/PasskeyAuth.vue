@@ -159,7 +159,13 @@ const handleRegister = async () => {
       options = getMockRegisterOptions(username.value.trim())
     } else {
       // Real API Options
-      const optionsRes = await fetch(`/api/passkey/register/options?username=${encodeURIComponent(username.value.trim())}`)
+      const optionsRes = await fetch('/webauthn/register/options', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username: username.value.trim() })
+      })
       if (!optionsRes.ok) {
         throw new Error('등록 옵션을 가져오는 데 실패했습니다.')
       }
@@ -186,7 +192,7 @@ const handleRegister = async () => {
       username.value = ''
     } else {
       // Real API verification
-      const finishRes = await fetch('/api/passkey/register/finish', {
+      const finishRes = await fetch('/webauthn/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -221,7 +227,13 @@ const handleLogin = async () => {
     if (mockMode.value) {
       options = getMockLoginOptions()
     } else {
-      const optionsRes = await fetch('/api/passkey/login/options')
+      const optionsRes = await fetch('/webauthn/authenticate/options', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      })
       if (!optionsRes.ok) {
         throw new Error('로그인 옵션을 가져오는 데 실패했습니다.')
       }
@@ -245,7 +257,7 @@ const handleLogin = async () => {
       setStatus(`성공적으로 로그인되었습니다! (MOCK - 계정: ${match.username})`, 'success')
     } else {
       // Real API verification
-      const finishRes = await fetch('/api/passkey/login/finish', {
+      const finishRes = await fetch('/login/webauthn', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
