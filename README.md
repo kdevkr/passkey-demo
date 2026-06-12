@@ -16,7 +16,10 @@ npm install
 npm run dev
 ```
 
-> ⚠️ **주의**: 패스키 인증(WebAuthn)은 브라우저 보안 제약으로 인해 반드시 **HTTPS** 환경에서 접속해야 합니다.
+> 🔐 **HTTPS 설정 (mkcert)**: 패스키 인증(WebAuthn)은 브라우저 보안 제약으로 인해 로컬 개발 환경에서도 HTTPS가 필수입니다.
+> 1. `mkcert -install` 명령어로 로컬 루트 CA를 신뢰할 수 있는 기관에 추가합니다.
+> 2. `mkcert localhost` 명령어로 `localhost`용 SSL 인증서를 발급합니다.
+> 3. 발급받은 인증서 파일을 프론트엔드(Vite) 및 백엔드(Spring Boot Keystore)에 등록하여 HTTPS 서버를 가동합니다.
 
 ## 🛠️ 주요 변경 및 트러블슈팅
 - **Jackson 3 호환**: `WebauthnJacksonModule` 등록으로 `PublicKeyCredential` 바디 역직렬화 해결
