@@ -34,3 +34,10 @@ pnpm dev
 > 1. `mkcert -install` 명령어로 로컬 루트 CA를 신뢰할 수 있는 기관에 추가합니다.
 > 2. `mkcert localhost` 명령어로 `localhost`용 SSL 인증서를 발급합니다.
 > 3. 발급받은 인증서 파일을 프론트엔드(Vite) 및 백엔드(Spring Boot Keystore)에 등록하여 HTTPS 서버를 가동합니다.
+
+## 🔗 패스키 데모 체험 사이트
+- [WebAuthn.io](https://webauthn.io/)
+- [SKT Passkey 체험하기](https://www.passkey-sktelecom.com/experience)
+- [Google Passkeys Demo](https://passkeys-demo.appspot.com/)
+- [드림시큐리티 패스키 솔루션](https://www.dreamsecurity.com/solution/certification/passkey)
+
