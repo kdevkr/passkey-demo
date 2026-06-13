@@ -16,13 +16,23 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
 
+import org.springframework.beans.factory.annotation.Value;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Value("${webauthn.rp-id:localhost}")
+    private String rpId;
+
+    @Value("${webauthn.allowed-origins:https://localhost:8080}")
+    private String allowedOrigins;
 
     @Bean
     public UserDetailsService userDetailsService(PublicKeyCredentialUserEntityRepository userEntityRepository) {
@@ -49,28 +59,37 @@ public class SecurityConfig {
             PublicKeyCredentialUserEntityRepository userEntityRepository,
             UserCredentialRepository userCredentialRepository) {
         PublicKeyCredentialRpEntity rpEntity = PublicKeyCredentialRpEntity.builder()
-                .id("localhost")
+                .id(rpId)
                 .name("Passkey Demo")
                 .build();
+        
+        Set<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .collect(Collectors.toSet());
+
         return new Webauthn4JRelyingPartyOperations(
                 userEntityRepository,
                 userCredentialRepository,
                 rpEntity,
-                Collections.singleton("https://localhost:8080")
+                origins
         );
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        String[] originsArray = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .toArray(String[]::new);
+
         http
             .csrf(csrf -> csrf.disable()) // Disable CSRF for simple REST API testing
             .authorizeHttpRequests(authorize -> authorize
                 .anyRequest().permitAll() // Allow everyone to access all endpoints for demo
             )
             .webAuthn(webauthn -> webauthn
-                .rpId("localhost")
+                .rpId(rpId)
                 .rpName("Passkey Demo")
-                .allowedOrigins("https://localhost:8080")
+                .allowedOrigins(originsArray)
             )
             .formLogin(withDefaults()); // Optional: keep form login active for fallback
 

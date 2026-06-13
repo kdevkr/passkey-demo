@@ -40,3 +40,7 @@ out/
 *.db
 *.db-shm
 *.db-wal
+
+### Local Config ###
+**/application-local.properties
+**/application-local.yml
