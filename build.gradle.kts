@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.xerial:sqlite-jdbc:3.47.2.0")
 	implementation("org.hibernate.orm:hibernate-community-dialects")
 	implementation("org.jspecify:jspecify:1.0.0")
+	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
