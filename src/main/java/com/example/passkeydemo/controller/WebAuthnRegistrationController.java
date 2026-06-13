@@ -1,13 +1,16 @@
 package com.example.passkeydemo.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.passkeydemo.controller.dto.RegisterRequest;
+import com.example.passkeydemo.controller.dto.RegistrationOptionsRequest;
+import com.example.passkeydemo.exception.RegistrationException;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.web.webauthn.api.AuthenticatorAttestationResponse;
 import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.security.web.webauthn.api.PublicKeyCredential;
+import org.springframework.security.web.webauthn.api.AuthenticatorAttestationResponse;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.management.ImmutableRelyingPartyRegistrationRequest;
@@ -24,11 +27,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api/register")
 public class WebAuthnRegistrationController {
 
-    @Autowired
-    private WebAuthnRelyingPartyOperations relyingPartyOperations;
+    private final WebAuthnRelyingPartyOperations relyingPartyOperations;
+    private final PublicKeyCredentialUserEntityRepository userEntityRepository;
 
-    @Autowired
-    private PublicKeyCredentialUserEntityRepository userEntityRepository;
+    public WebAuthnRegistrationController(
+            WebAuthnRelyingPartyOperations relyingPartyOperations,
+            PublicKeyCredentialUserEntityRepository userEntityRepository) {
+        this.relyingPartyOperations = relyingPartyOperations;
+        this.userEntityRepository = userEntityRepository;
+    }
 
     private final Map<String, PublicKeyCredentialCreationOptions> optionsStore = new ConcurrentHashMap<>();
 
@@ -60,11 +67,9 @@ public class WebAuthnRegistrationController {
     }
 
     @PostMapping("/options")
-    public ResponseEntity<?> getRegistrationOptions(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        if (username == null || username.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Username is required");
-        }
+    public ResponseEntity<PublicKeyCredentialCreationOptions> getRegistrationOptions(
+            @Valid @RequestBody RegistrationOptionsRequest request) {
+        String username = request.username();
 
         PublicKeyCredentialUserEntity userEntity = userEntityRepository.findByUsername(username);
         if (userEntity == null) {
@@ -87,39 +92,15 @@ public class WebAuthnRegistrationController {
         return ResponseEntity.ok(options);
     }
 
-    public static class RegisterRequest {
-        private String username;
-        private PublicKeyCredential<AuthenticatorAttestationResponse> credential;
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public PublicKeyCredential<AuthenticatorAttestationResponse> getCredential() {
-            return credential;
-        }
-
-        public void setCredential(PublicKeyCredential<AuthenticatorAttestationResponse> credential) {
-            this.credential = credential;
-        }
-    }
-
     @PostMapping
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        String username = request.getUsername();
-        PublicKeyCredential<AuthenticatorAttestationResponse> credential = request.getCredential();
-
-        if (username == null || credential == null) {
-            return ResponseEntity.badRequest().body("Username and credential are required");
-        }
+    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
+        String username = request.username();
+        PublicKeyCredential<AuthenticatorAttestationResponse> credential = request.credential();
 
         PublicKeyCredentialCreationOptions options = optionsStore.get(username);
         if (options == null) {
-            return ResponseEntity.badRequest().body("No registration session found for user. Please request options first.");
+            throw new RegistrationException(
+                    "등록 세션을 찾을 수 없습니다. 먼저 옵션을 요청하세요.");
         }
 
         try {
@@ -130,8 +111,10 @@ public class WebAuthnRegistrationController {
             // Clean up options after successful registration
             optionsStore.remove(username);
             return ResponseEntity.ok("Registration successful");
+        } catch (RegistrationException e) {
+            throw e;
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Registration verification failed: " + e.getMessage());
+            throw new RegistrationException("패스키 등록 검증에 실패했습니다.", e);
         }
     }
 }
