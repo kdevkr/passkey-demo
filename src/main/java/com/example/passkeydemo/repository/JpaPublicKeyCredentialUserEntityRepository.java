@@ -34,7 +34,9 @@ public class JpaPublicKeyCredentialUserEntityRepository
         UserEntity entity = jpaRepo.findById(id).orElse(new UserEntity());
         entity.setId(id);
         entity.setUsername(userEntity.getName());
-        entity.setDisplayName(userEntity.getDisplayName());
+        // getDisplayName()은 @Nullable이므로 null이면 username으로 폴백한다.
+        String displayName = userEntity.getDisplayName();
+        entity.setDisplayName(displayName != null ? displayName : userEntity.getName());
         jpaRepo.save(entity);
     }
 

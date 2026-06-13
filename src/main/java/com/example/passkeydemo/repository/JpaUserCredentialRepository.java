@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,7 +47,11 @@ public class JpaUserCredentialRepository implements UserCredentialRepository {
         entity.setCredentialId(credId);
         entity.setUserId(record.getUserEntityUserId().getBytes());
         entity.setLabel(record.getLabel());
-        entity.setCredentialType(record.getCredentialType().getValue());
+        // getCredentialType()은 라이브러리에서 @Nullable이지만 스펙상 "public-key"가 유일하므로
+        // null이면 PUBLIC_KEY로 방어한다.
+        PublicKeyCredentialType credentialType = record.getCredentialType();
+        entity.setCredentialType(
+                (credentialType != null ? credentialType : PublicKeyCredentialType.PUBLIC_KEY).getValue());
         entity.setPublicKeyCose(record.getPublicKey().getBytes());
         entity.setSignatureCount(record.getSignatureCount());
         entity.setUvInitialized(record.isUvInitialized());
@@ -94,9 +99,11 @@ public class JpaUserCredentialRepository implements UserCredentialRepository {
                 .backupState(entity.isBackupState())
                 .attestationObject(toBytes(entity.getAttestationObject()))
                 .attestationClientDataJSON(toBytes(entity.getAttestationClientDataJson()))
-                .created(entity.getCreated())
-                .lastUsed(entity.getLastUsed())
-                .label(entity.getLabel())
+                // created/lastUsed는 저장 시 항상 채워지는 값이며 빌더가 non-null을 요구하므로
+                // 읽기 경계에서 불변식을 단언한다. null이면 데이터 무결성 오류로 즉시 실패.
+                .created(Objects.requireNonNull(entity.getCreated(), "created must not be null"))
+                .lastUsed(Objects.requireNonNull(entity.getLastUsed(), "lastUsed must not be null"))
+                .label(Objects.requireNonNull(entity.getLabel(), "label must not be null"))
                 .build();
     }
 

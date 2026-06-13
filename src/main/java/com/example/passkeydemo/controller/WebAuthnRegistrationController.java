@@ -37,6 +37,8 @@ public class WebAuthnRegistrationController {
         this.userEntityRepository = userEntityRepository;
     }
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final Map<String, PublicKeyCredentialCreationOptions> optionsStore = new ConcurrentHashMap<>();
 
     private static class SimpleUserEntity implements PublicKeyCredentialUserEntity {
@@ -74,7 +76,7 @@ public class WebAuthnRegistrationController {
         PublicKeyCredentialUserEntity userEntity = userEntityRepository.findByUsername(username);
         if (userEntity == null) {
             byte[] userId = new byte[32];
-            new SecureRandom().nextBytes(userId);
+            SECURE_RANDOM.nextBytes(userId);
             userEntity = new SimpleUserEntity(userId, username, username);
             userEntityRepository.save(userEntity);
         }
