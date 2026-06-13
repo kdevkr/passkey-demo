@@ -110,30 +110,9 @@ const handleRegister = async () => {
     }
     options = await optionsRes.json()
 
-    // Ensure all options fields are properly formatted for @simplewebauthn/browser
-    const formattedOptions = {
-      ...options,
-      challenge: typeof options.challenge === 'object' && options.challenge.bytes ? options.challenge.bytes : options.challenge,
-      user: options.user ? {
-        ...options.user,
-        id: typeof options.user.id === 'object' && options.user.id.bytes ? options.user.id.bytes : options.user.id
-      } : undefined,
-      pubKeyCredParams: options.pubKeyCredParams ? options.pubKeyCredParams.map(param => ({
-        type: typeof param.type === 'object' && param.type.value ? param.type.value : param.type,
-        alg: typeof param.alg === 'object' && param.alg.value !== undefined ? param.alg.value : param.alg
-      })) : undefined,
-      attestation: typeof options.attestation === 'object' && options.attestation.value ? options.attestation.value : options.attestation,
-      authenticatorSelection: options.authenticatorSelection ? {
-        ...options.authenticatorSelection,
-        residentKey: typeof options.authenticatorSelection.residentKey === 'object' && options.authenticatorSelection.residentKey.value ? options.authenticatorSelection.residentKey.value : options.authenticatorSelection.residentKey,
-        userVerification: typeof options.authenticatorSelection.userVerification === 'object' && options.authenticatorSelection.userVerification.value ? options.authenticatorSelection.userVerification.value : options.authenticatorSelection.userVerification
-      } : undefined,
-      timeout: typeof options.timeout === 'string' ? 300000 : options.timeout // Convert Java Duration string (e.g. PT5M) to milliseconds (5m = 300000ms)
-    }
-
     // Start browser WebAuthn registration
     setStatus('기기 인증을 진행 중입니다...', 'info')
-    const credential = await startRegistration({ optionsJSON: formattedOptions })
+    const credential = await startRegistration({ optionsJSON: options })
 
     setStatus('등록 완료를 검증하는 중입니다...', 'info')
     
@@ -188,22 +167,9 @@ const handleLogin = async () => {
     }
     options = await optionsRes.json()
 
-    // Ensure challenge and allowed credentials IDs are base64url strings for @simplewebauthn/browser
-    const formattedOptions = {
-      ...options,
-      challenge: typeof options.challenge === 'object' && options.challenge.bytes ? options.challenge.bytes : options.challenge,
-      allowCredentials: options.allowCredentials ? options.allowCredentials.map(cred => ({
-        ...cred,
-        id: typeof cred.id === 'object' && cred.id.bytes ? cred.id.bytes : cred.id,
-        type: typeof cred.type === 'object' && cred.type.value ? cred.type.value : cred.type
-      })) : undefined,
-      userVerification: typeof options.userVerification === 'object' && options.userVerification.value ? options.userVerification.value : options.userVerification,
-      timeout: typeof options.timeout === 'string' ? 300000 : options.timeout // Convert Java Duration string (e.g. PT5M) to milliseconds (5m = 300000ms)
-    }
-
     // Start browser WebAuthn authentication
     setStatus('기기 인증을 진행 중입니다...', 'info')
-    const assertion = await startAuthentication({ optionsJSON: formattedOptions })
+    const assertion = await startAuthentication({ optionsJSON: options })
 
     setStatus('로그인 완료를 검증하는 중입니다...', 'info')
 
